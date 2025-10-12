@@ -47,7 +47,7 @@ jobs:
         run: mvn deploy -s ~/.m2/settings.xml
 
       - name: Log in to GHCR
-        run: echo "${{ secrets.GH_PACKAGES_TOKEN }}" | docker login ghcr.io -u learnwithprayag --password-stdin
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u learnwithprayag --password-stdin
 
       - name: Build Docker image
         run: docker build -t ghcr.io/learnwithprayag/springboot-demo:2.0.0 .
