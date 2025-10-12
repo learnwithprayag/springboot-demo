@@ -1,4 +1,4 @@
-# Maven Build Tool – Short Note
+# Maven Build Tool 
 
 **Apache Maven** is a **Java-based build automation and project management tool**. It simplifies **building, packaging, testing, and deploying Java applications**. Maven uses a **Project Object Model (POM)** file (`pom.xml`) to define project structure, dependencies, plugins, and build configuration.
 
