@@ -11,7 +11,7 @@ public class DemoApplication {
 
     @GetMapping("/")
     public String home() {
-        return "Hello from Spring Boot JAR Demo!";
+        return "Hello from Spring Boot Maven Demo!";
     }
 
     public static void main(String[] args) {
