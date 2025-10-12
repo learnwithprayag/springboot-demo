@@ -1,57 +1,56 @@
-name: CI/CD Spring Boot → GitHub Packages & GHCR
+name: CI/CD Spring Boot
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
-  build-and-deploy:
+  build-and-publish:
     runs-on: ubuntu-latest
-
     env:
-      GITHUB_USERNAME: prayag-sangode
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}  # <-- your PAT secret
     steps:
-      # Checkout code
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      # Set up JDK 17
-      - name: Set up JDK 17
+      - name: Set up Java
         uses: actions/setup-java@v3
         with:
-          java-version: 17
           distribution: temurin
+          java-version: 17
           cache: maven
 
-      # Cache Maven dependencies
-      - name: Cache Maven packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+      - name: Configure Maven settings
+        run: |
+          echo $GITHUB_TOKEN
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                                        https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>github</id>
+                <username>learnwithprayag</username>
+                <password>\${env.GITHUB_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
 
-      # Build & Deploy Maven artifact
-      - name: Build & deploy JAR to GitHub Packages
-        run: mvn clean deploy -U -s settings.xml
-        # Retry up to 3 times if Maven Central fails
-        continue-on-error: false
+      - name: Build JAR
+        run: mvn clean package
 
-      # Log in to GHCR
+      - name: Deploy to GitHub Packages
+        run: mvn deploy -s ~/.m2/settings.xml
+
       - name: Log in to GHCR
-        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ env.GITHUB_USERNAME }} --password-stdin
+        run: echo "${{ secrets.GH_PACKAGES_TOKEN }}" | docker login ghcr.io -u learnwithprayag --password-stdin
 
-      # Build Docker image
       - name: Build Docker image
-        run: docker build -t ghcr.io/${{ env.GITHUB_USERNAME }}/springboot-demo:1.0.0 .
+        run: docker build -t ghcr.io/learnwithprayag/springboot-demo:2.0.0 .
 
-      # Push Docker image to GHCR
       - name: Push Docker image
-        run: docker push ghcr.io/${{ env.GITHUB_USERNAME }}/springboot-demo:1.0.0
+        run: docker push ghcr.io/learnwithprayag/springboot-demo:2.0.0
