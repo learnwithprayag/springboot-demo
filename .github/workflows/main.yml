@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GITHUB_USERNAME: learnwithprayag
+      GITHUB_USERNAME: prayag-sangode
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
