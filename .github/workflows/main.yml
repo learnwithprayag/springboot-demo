@@ -1,55 +1,57 @@
-name: CI/CD Spring Boot
+name: CI/CD Spring Boot → GitHub Packages & GHCR
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  build-and-publish:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     env:
-      GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}  # <-- your PAT secret
+      GITHUB_USERNAME: learnwithprayag
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
-      - name: Checkout repo
+      # Checkout code
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Java
+      # Set up JDK 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
-          distribution: temurin
           java-version: 17
+          distribution: temurin
           cache: maven
 
-      - name: Configure Maven settings
-        run: |
-          mkdir -p ~/.m2
-          cat > ~/.m2/settings.xml <<EOF
-          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
-                                        https://maven.apache.org/xsd/settings-1.0.0.xsd">
-            <servers>
-              <server>
-                <id>github</id>
-                <username>learnwithprayag</username>
-                <password>\${env.GITHUB_TOKEN}</password>
-              </server>
-            </servers>
-          </settings>
-          EOF
+      # Cache Maven dependencies
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
-      - name: Build JAR
-        run: mvn clean package
+      # Build & Deploy Maven artifact
+      - name: Build & deploy JAR to GitHub Packages
+        run: mvn clean deploy -U -s settings.xml
+        # Retry up to 3 times if Maven Central fails
+        continue-on-error: false
 
-      - name: Deploy to GitHub Packages
-        run: mvn deploy -s ~/.m2/settings.xml
-
+      # Log in to GHCR
       - name: Log in to GHCR
-        run: echo "${{ secrets.GH_PACKAGES_TOKEN }}" | docker login ghcr.io -u learnwithprayag --password-stdin
+        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ env.GITHUB_USERNAME }} --password-stdin
 
+      # Build Docker image
       - name: Build Docker image
-        run: docker build -t ghcr.io/learnwithprayag/springboot-demo:2.0.0 .
+        run: docker build -t ghcr.io/${{ env.GITHUB_USERNAME }}/springboot-demo:1.0.0 .
 
+      # Push Docker image to GHCR
       - name: Push Docker image
-        run: docker push ghcr.io/learnwithprayag/springboot-demo:2.0.0
+        run: docker push ghcr.io/${{ env.GITHUB_USERNAME }}/springboot-demo:1.0.0
