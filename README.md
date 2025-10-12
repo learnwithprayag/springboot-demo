@@ -1,4 +1,4 @@
-# LAB: Spring Boot → Build JAR → Push to GitHub Packages (Maven)
+# SrpingBoot Application Demo
 
 Steps we’ll cover:
 
@@ -225,5 +225,45 @@ And in the `<repositories>` block:
 | 7    | Build & deploy  | `mvn clean package && mvn deploy -s ~/.m2/settings.xml` |
 | 8    | Verify artifact | GitHub Packages tab                                     |
 | 9    | Use artifact    | Add `<dependency>` + `<repository>` in POM              |
+
+---
+Ah! That’s because **GitHub recently moved GHCR (GitHub Container Registry) packages out of the “Packages” tab for repos**. Now:
+
+* For **Docker/OCI images** pushed to GHCR, the **Packages tab in the repo UI will often be empty**.
+* GHCR images are visible in your **user or organization packages page**, not always directly in the repo.
+
+---
+
+### How to check the image
+
+1. **Go to your user’s packages page**:
+
+```
+https://github.com/users/learnwithprayag/packages
+```
+
+Here you’ll see all GHCR images you’ve pushed.
+
+2. **Click the image** to see tags (`1.0.0`, `2.0.0`, etc.) and pull commands.
+
+---
+
+### Important GHCR notes
+
+* Make sure the repository is linked correctly: image name should be:
+
+```
+ghcr.io/<USERNAME>/<REPO>:<TAG>
+```
+
+* If you push with the correct repo/user namespace, it will appear under your **account packages**, not necessarily under the repo “Packages” tab.
+* You can also see it via CLI:
+
+```bash
+docker pull ghcr.io/learnwithprayag/springboot-demo:1.0.0
+```
+
+If it pulls successfully, the image exists in GHCR.
+
 
 
