@@ -87,7 +87,7 @@ jobs:
       # 1️⃣1️⃣ Run Trivy vulnerability scanner
       - name: Run Trivy Docker scan
         if: ${{ github.event.inputs.docker != 'false' }}
-        uses: aquasecurity/trivy-action@v0.33.1
+        uses:  aquasecurity/trivy-action@0.32.0
         with:
           image-ref: ghcr.io/learnwithprayag/springboot-demo:${{ github.sha_short }}
           format: 'table'
