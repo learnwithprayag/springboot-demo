@@ -88,7 +88,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.32.0
         with:
-          image-ref: springboot-demo:$SHORT_SHA  # Scan local image tag
+          image-ref: springboot-demo:${{ env.SHORT_SHA }}  # Use GitHub Actions env variable
           format: table
           exit-code: 1
           severity: CRITICAL,HIGH
