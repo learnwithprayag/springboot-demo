@@ -9,9 +9,7 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     env:
-      GITHUB_TOKEN: ${{ secrets.MAVEN_DEPLOY_TOKEN }}
-      GITHUB_PACKAGE_VERSION: 2.0.0  # Set artifact version here
-
+      GITHUB_TOKEN: ${{ secrets.MAVEN_DEPLOY_TOKEN }}  # Your PAT for Maven deploy
     steps:
       # 1️⃣ Checkout repo
       - name: Checkout repo
@@ -25,7 +23,7 @@ jobs:
           java-version: 17
           cache: maven
 
-      # 3️⃣ Configure Maven settings
+      # 3️⃣ Configure Maven settings for GitHub Packages
       - name: Configure Maven settings
         run: |
           mkdir -p ~/.m2
@@ -44,55 +42,40 @@ jobs:
           </settings>
           EOF
 
-      # 4️⃣ Check if Maven artifact version exists
-      - name: Check if Maven artifact version exists
-        id: check_package
+      # 4️⃣ Generate timestamp version
+      - name: Generate timestamp version
+        id: timestamp
         run: |
-          RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/users/learnwithprayag/packages/maven/springboot-demo/versions)
+          TIMESTAMP_VERSION=$(date +%Y%m%d%H%M%S)
+          MAVEN_VERSION="2.0.0-$TIMESTAMP_VERSION"
+          echo "maven_version=$MAVEN_VERSION" >> $GITHUB_OUTPUT
+          echo "Maven timestamp version: $MAVEN_VERSION"
 
-          PACKAGE_EXISTS=""
-          if echo "$RESPONSE" | jq type | grep -q '"array"'; then
-            PACKAGE_EXISTS=$(echo "$RESPONSE" | jq -r --arg VERSION "$GITHUB_PACKAGE_VERSION" '
-              .[] | select(.name==$VERSION) | .name
-            ')
-          fi
-          echo "DEBUG: PACKAGE_EXISTS=$PACKAGE_EXISTS"
-          echo "package_exists=$PACKAGE_EXISTS" >> $GITHUB_OUTPUT
-
-      # 5️⃣ Set Maven version dynamically if not exists
+      # 5️⃣ Set Maven version dynamically
       - name: Set Maven version dynamically
-        if: steps.check_package.outputs.package_exists == ''
-        run: mvn versions:set -DnewVersion=${GITHUB_PACKAGE_VERSION} -DgenerateBackupPoms=false
+        run: mvn versions:set -DnewVersion=${{ steps.timestamp.outputs.maven_version }} -DgenerateBackupPoms=false
 
       # 6️⃣ Build JAR
       - name: Build JAR
         run: mvn clean package
 
-      # 7️⃣ Detect built JAR filename dynamically
-      - name: Detect JAR filename
-        id: jar_file
-        run: |
-          JAR_NAME=$(ls target/springboot-demo-*.jar | xargs -n 1 basename)
-          echo "jar_file=$JAR_NAME" >> $GITHUB_OUTPUT
+      # 7️⃣ Rename JAR for Docker
+      - name: Rename JAR for Docker
+        run: mv target/springboot-demo-*.jar target/app.jar
 
-      # 8️⃣ Deploy to GitHub Packages if new version
+      # 8️⃣ Deploy to GitHub Packages
       - name: Deploy to GitHub Packages
-        if: steps.check_package.outputs.package_exists == ''
         run: mvn deploy -s ~/.m2/settings.xml
 
-      # 9️⃣ Log in to GHCR
+      # 9️⃣ Log in to GitHub Container Registry
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u learnwithprayag --password-stdin
 
-      # 🔟 Build Docker image with dynamic JAR filename
+      # 🔟 Build Docker image using short commit SHA and latest
       - name: Build Docker image
         run: |
-          docker build \
-            --build-arg JAR_FILE=${{ steps.jar_file.outputs.jar_file }} \
-            -t ghcr.io/learnwithprayag/springboot-demo:${GITHUB_SHA::7} \
-            -t ghcr.io/learnwithprayag/springboot-demo:latest .
+          docker build -t ghcr.io/learnwithprayag/springboot-demo:${GITHUB_SHA::7} \
+                       -t ghcr.io/learnwithprayag/springboot-demo:latest .
 
       # 1️⃣1️⃣ Push Docker image
       - name: Push Docker image
