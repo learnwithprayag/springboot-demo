@@ -11,11 +11,11 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.MAVEN_DEPLOY_TOKEN }}  # Your PAT for Maven deploy
     steps:
-      # 1️⃣ Checkout repo
+      # Checkout repo
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      # 2️⃣ Set up Java and cache Maven
+      # Set up Java and cache Maven
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
@@ -23,7 +23,7 @@ jobs:
           java-version: 17
           cache: maven
 
-      # 3️⃣ Configure Maven settings for GitHub Packages
+      # Configure Maven settings for GitHub Packages
       - name: Configure Maven settings
         run: |
           mkdir -p ~/.m2
@@ -42,7 +42,7 @@ jobs:
           </settings>
           EOF
 
-      # 4️⃣ Generate timestamp version
+      # Generate timestamp version
       - name: Generate timestamp version
         id: timestamp
         run: |
@@ -52,29 +52,29 @@ jobs:
           echo "Docker_tag=$TIMESTAMP_VERSION" >> $GITHUB_OUTPUT
           echo "Maven timestamp version: $MAVEN_VERSION"
 
-      # 5️⃣ Set Maven version dynamically
+      # Set Maven version dynamically
       - name: Set Maven version dynamically
         run: mvn versions:set -DnewVersion=${{ steps.timestamp.outputs.maven_version }} -DgenerateBackupPoms=false
 
-      # 6️⃣ Build JAR
+      # Build JAR
       - name: Build JAR
         run: mvn clean package
 
-      # 7️⃣ Rename JAR for Docker
+      # Rename JAR for Docker
       - name: Rename JAR for Docker
         run: mv target/springboot-demo-*.jar target/app.jar
 
-      # 8️⃣ Deploy to GitHub Packages
+      # Deploy to GitHub Packages
       - name: Deploy to GitHub Packages
         if: ${{ github.event.inputs.maven != 'false' }}
         run: mvn deploy -s ~/.m2/settings.xml
 
-      # 9️⃣ Log in to GitHub Container Registry
+      # Log in to GitHub Container Registry
       - name: Log in to GHCR
         if: ${{ github.event.inputs.docker != 'false' }}
         run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u learnwithprayag --password-stdin
 
-      # 🔟 Build Docker image with timestamp tag and short SHA
+      # Build Docker image with timestamp tag and short SHA
       - name: Build Docker image
         if: ${{ github.event.inputs.docker != 'false' }}
         run: |
@@ -84,14 +84,18 @@ jobs:
                        -t ghcr.io/learnwithprayag/springboot-demo:latest \
                        -t ghcr.io/learnwithprayag/springboot-demo:$TIMESTAMP_TAG .
 
-      # 1️⃣1️⃣ Scan Docker image with Trivy
+      # Install and run Trivy Docker scan
       - name: Trivy Docker scan
         if: ${{ github.event.inputs.docker != 'false' }}
         run: |
+          # Install Trivy
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh
+          
+          # Scan Docker image
           SHORT_SHA=${GITHUB_SHA::7}
           trivy image ghcr.io/learnwithprayag/springboot-demo:$SHORT_SHA --format table --exit-code 1 --severity CRITICAL,HIGH
 
-      # 1️⃣2️⃣ Push Docker image
+      # Push Docker image
       - name: Push Docker image
         if: ${{ github.event.inputs.docker != 'false' }}
         run: |
