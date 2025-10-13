@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.MAVEN_DEPLOY_TOKEN }}  # Your PAT for Maven deploy
-      GITHUB_PACKAGE_VERSION: 2.0.0                    # Set your desired artifact version
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -40,43 +39,38 @@ jobs:
           </settings>
           EOF
 
-      - name: Check if Maven artifact version exists
-        id: check_package
+      - name: Generate timestamp for Maven version
+        id: timestamp
         run: |
-          echo "Checking if Maven artifact version exists on GitHub Packages..."
-          RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/users/learnwithprayag/packages/maven/springboot-demo/versions)
-
-          echo "DEBUG: API RESPONSE=$RESPONSE"
-
-          PACKAGE_EXISTS=$(echo "$RESPONSE" | jq -r --arg VERSION "$GITHUB_PACKAGE_VERSION" '
-            if type=="array" then
-              .[] | select(.name==$VERSION) | .name
-            else
-              empty
-            end
-          ')
-
-          echo "DEBUG: PACKAGE_EXISTS=$PACKAGE_EXISTS"
-          echo "package_exists=$PACKAGE_EXISTS" >> $GITHUB_OUTPUT
+          DATE_VERSION=$(date +%Y%m%d%H%M%S)
+          echo "timestamp_version=$DATE_VERSION" >> $GITHUB_OUTPUT
 
       - name: Set Maven version dynamically
-        if: steps.check_package.outputs.package_exists == ''
-        run: mvn versions:set -DnewVersion=${GITHUB_PACKAGE_VERSION} -DgenerateBackupPoms=false
+        run: mvn versions:set -DnewVersion=${{ steps.timestamp.outputs.timestamp_version }} -DgenerateBackupPoms=false
 
       - name: Build JAR
         run: mvn clean package
 
       - name: Deploy to GitHub Packages
-        if: steps.check_package.outputs.package_exists == ''
         run: mvn deploy -s ~/.m2/settings.xml
 
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u learnwithprayag --password-stdin
 
+      - name: Set Docker tags
+        id: docker_tags
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+          echo "DOCKER_TAG_SHA=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "DOCKER_TAG_LATEST=latest" >> $GITHUB_OUTPUT
+
       - name: Build Docker image
-        run: docker build -t ghcr.io/learnwithprayag/springboot-demo:${GITHUB_PACKAGE_VERSION} .
+        run: |
+          docker build -t ghcr.io/learnwithprayag/springboot-demo:${{ steps.docker_tags.outputs.DOCKER_TAG_SHA }} \
+                       -t ghcr.io/learnwithprayag/springboot-demo:latest .
 
       - name: Push Docker image
-        run: docker push ghcr.io/learnwithprayag/springboot-demo:${GITHUB_PACKAGE_VERSION}
+        run: |
+          docker push ghcr.io/learnwithprayag/springboot-demo:${{ steps.docker_tags.outputs.DOCKER_TAG_SHA }}
+          docker push ghcr.io/learnwithprayag/springboot-demo:latest
