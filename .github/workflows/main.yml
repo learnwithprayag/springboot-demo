@@ -4,17 +4,6 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
-    inputs:
-      maven:
-        description: 'Deploy Maven artifact? (true/false)'
-        required: false
-        default: 'true'
-      docker:
-        description: 'Push Docker image? (true/false)'
-        required: false
-        default: 'true'
-
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
