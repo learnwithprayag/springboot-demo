@@ -46,13 +46,15 @@ jobs:
           RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/users/learnwithprayag/packages/maven/springboot-demo/versions)
-
+      
+          # Check if any version matches GITHUB_PACKAGE_VERSION
           PACKAGE_EXISTS=$(echo "$RESPONSE" | jq -r --arg VERSION "$GITHUB_PACKAGE_VERSION" '
-            .[] | select(.metadata.container.tags[]? == $VERSION) | .name
+            .[] | select(.name == $VERSION) | .name
           ')
-
+      
           echo "DEBUG: PACKAGE_EXISTS=$PACKAGE_EXISTS"
           echo "package_exists=$PACKAGE_EXISTS" >> $GITHUB_OUTPUT
+
 
       - name: Set Maven version dynamically
         if: steps.check_package.outputs.package_exists == ''
