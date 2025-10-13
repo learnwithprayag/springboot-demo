@@ -4,23 +4,20 @@ on:
   push:
     branches:
       - main
-  # Manual releases via git tags
-  create:
-    tags:
-      - 'v*.*.*'
-
-env:
-  MAVEN_REPO_ID: github
-  MAVEN_REPO_URL: https://maven.pkg.github.com/learnwithprayag/springboot-demo
 
 jobs:
-  ci-build:
+  build-and-publish:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    env:
+      GITHUB_TOKEN: ${{ secrets.MAVEN_DEPLOY_TOKEN }}
+      GITHUB_PACKAGE_VERSION: 2.0.0  # Set artifact version here
+
     steps:
+      # 1️⃣ Checkout repo
       - name: Checkout repo
         uses: actions/checkout@v3
 
+      # 2️⃣ Set up Java and cache Maven
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
@@ -28,6 +25,7 @@ jobs:
           java-version: 17
           cache: maven
 
+      # 3️⃣ Configure Maven settings
       - name: Configure Maven settings
         run: |
           mkdir -p ~/.m2
@@ -38,100 +36,66 @@ jobs:
                                         https://maven.apache.org/xsd/settings-1.0.0.xsd">
             <servers>
               <server>
-                <id>${{ env.MAVEN_REPO_ID }}</id>
+                <id>github</id>
                 <username>learnwithprayag</username>
-                <password>${{ secrets.MAVEN_DEPLOY_TOKEN }}</password>
+                <password>\${env.GITHUB_TOKEN}</password>
               </server>
             </servers>
           </settings>
           EOF
 
-      - name: Set timestamp version
-        id: timestamp
+      # 4️⃣ Check if Maven artifact version exists
+      - name: Check if Maven artifact version exists
+        id: check_package
         run: |
-          TIMESTAMP=$(date +%Y%m%d%H%M%S)
-          echo "timestamp_version=$TIMESTAMP" >> $GITHUB_OUTPUT
+          RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/users/learnwithprayag/packages/maven/springboot-demo/versions)
 
+          PACKAGE_EXISTS=""
+          if echo "$RESPONSE" | jq type | grep -q '"array"'; then
+            PACKAGE_EXISTS=$(echo "$RESPONSE" | jq -r --arg VERSION "$GITHUB_PACKAGE_VERSION" '
+              .[] | select(.name==$VERSION) | .name
+            ')
+          fi
+          echo "DEBUG: PACKAGE_EXISTS=$PACKAGE_EXISTS"
+          echo "package_exists=$PACKAGE_EXISTS" >> $GITHUB_OUTPUT
+
+      # 5️⃣ Set Maven version dynamically if not exists
       - name: Set Maven version dynamically
-        run: mvn versions:set -DnewVersion=${{ steps.timestamp.outputs.timestamp_version }} -DgenerateBackupPoms=false
+        if: steps.check_package.outputs.package_exists == ''
+        run: mvn versions:set -DnewVersion=${GITHUB_PACKAGE_VERSION} -DgenerateBackupPoms=false
 
+      # 6️⃣ Build JAR
       - name: Build JAR
         run: mvn clean package
 
-      - name: Rename JAR for Docker
-        run: mv target/springboot-demo-*.jar target/app.jar
+      # 7️⃣ Detect built JAR filename dynamically
+      - name: Detect JAR filename
+        id: jar_file
+        run: |
+          JAR_NAME=$(ls target/springboot-demo-*.jar | xargs -n 1 basename)
+          echo "jar_file=$JAR_NAME" >> $GITHUB_OUTPUT
 
+      # 8️⃣ Deploy to GitHub Packages if new version
       - name: Deploy to GitHub Packages
+        if: steps.check_package.outputs.package_exists == ''
         run: mvn deploy -s ~/.m2/settings.xml
 
+      # 9️⃣ Log in to GHCR
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u learnwithprayag --password-stdin
 
+      # 🔟 Build Docker image with dynamic JAR filename
       - name: Build Docker image
         run: |
-          docker build -t ghcr.io/learnwithprayag/springboot-demo:${GITHUB_SHA::7} \
-                       -t ghcr.io/learnwithprayag/springboot-demo:latest .
+          docker build \
+            --build-arg JAR_FILE=${{ steps.jar_file.outputs.jar_file }} \
+            -t ghcr.io/learnwithprayag/springboot-demo:${GITHUB_SHA::7} \
+            -t ghcr.io/learnwithprayag/springboot-demo:latest .
 
+      # 1️⃣1️⃣ Push Docker image
       - name: Push Docker image
         run: |
           docker push ghcr.io/learnwithprayag/springboot-demo:${GITHUB_SHA::7}
-          docker push ghcr.io/learnwithprayag/springboot-demo:latest
-
-  release-build:
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: 17
-          cache: maven
-
-      - name: Configure Maven settings
-        run: |
-          mkdir -p ~/.m2
-          cat > ~/.m2/settings.xml <<EOF
-          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
-                                        https://maven.apache.org/xsd/settings-1.0.0.xsd">
-            <servers>
-              <server>
-                <id>${{ env.MAVEN_REPO_ID }}</id>
-                <username>learnwithprayag</username>
-                <password>${{ secrets.MAVEN_DEPLOY_TOKEN }}</password>
-              </server>
-            </servers>
-          </settings>
-          EOF
-
-      - name: Set Maven version from Git tag
-        run: |
-          TAG_VERSION=${GITHUB_REF/refs\/tags\//}
-          mvn versions:set -DnewVersion=$TAG_VERSION -DgenerateBackupPoms=false
-
-      - name: Build JAR
-        run: mvn clean package
-
-      - name: Rename JAR for Docker
-        run: mv target/springboot-demo-*.jar target/app.jar
-
-      - name: Deploy to GitHub Packages
-        run: mvn deploy -s ~/.m2/settings.xml
-
-      - name: Log in to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u learnwithprayag --password-stdin
-
-      - name: Build Docker image
-        run: |
-          docker build -t ghcr.io/learnwithprayag/springboot-demo:$TAG_VERSION \
-                       -t ghcr.io/learnwithprayag/springboot-demo:latest .
-
-      - name: Push Docker image
-        run: |
-          docker push ghcr.io/learnwithprayag/springboot-demo:$TAG_VERSION
           docker push ghcr.io/learnwithprayag/springboot-demo:latest
