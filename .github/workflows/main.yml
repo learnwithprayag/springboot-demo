@@ -84,14 +84,14 @@ jobs:
                        -t ghcr.io/learnwithprayag/springboot-demo:latest \
                        -t ghcr.io/learnwithprayag/springboot-demo:$TIMESTAMP_TAG .
 
-      - name: Trivy Docker scan
-        if: ${{ github.event.inputs.docker != 'false' }}
-        uses: aquasecurity/trivy-action@v2
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@v0.33.1
         with:
-          image-ref: ghcr.io/learnwithprayag/springboot-demo:${{ github.sha }}
-          format: table
+          image-ref: 'ghcr.io/learnwithprayag/springboot-demo:${{ github.sha }}'
+          format: 'table'
           exit-code: 1
-          severity: CRITICAL,HIGH
+          severity: 'CRITICAL,HIGH'
+
 
 
       # Push Docker image
