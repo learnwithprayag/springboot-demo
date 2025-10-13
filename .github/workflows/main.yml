@@ -46,11 +46,20 @@ jobs:
       - name: Check if JAR version exists
         id: check_package
         run: |
-          PACKAGE_EXISTS=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+          RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/users/learnwithprayag/packages/maven/springboot-demo/versions \
-            | jq -r --arg VERSION "$GITHUB_PACKAGE_VERSION" '.[] | select(.name==$VERSION) | .name')
+            https://api.github.com/users/learnwithprayag/packages/maven/springboot-demo/versions)
+      
+          PACKAGE_EXISTS=$(echo "$RESPONSE" | jq -r --arg VERSION "$GITHUB_PACKAGE_VERSION" '
+            if type=="array" then
+              .[] | select(.name==$VERSION) | .name
+            else
+              empty
+            end
+          ')
+      
           echo "package_exists=$PACKAGE_EXISTS" >> $GITHUB_OUTPUT
+
 
       - name: Deploy to GitHub Packages
         if: steps.check_package.outputs.package_exists == ''
