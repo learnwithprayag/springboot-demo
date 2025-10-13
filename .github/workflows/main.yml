@@ -74,21 +74,23 @@ jobs:
         if: ${{ github.event.inputs.docker != 'false' }}
         run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u learnwithprayag --password-stdin
 
-      # 🔟 Build Docker image with timestamp tag and short SHA
+      # 🔟 Build Docker image with timestamp tag and short SHA, and export SHORT_SHA
       - name: Build Docker image
         if: ${{ github.event.inputs.docker != 'false' }}
         run: |
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV    # export to other steps
           TIMESTAMP_TAG=${{ steps.timestamp.outputs.docker_tag }}
+          echo "TIMESTAMP_TAG=$TIMESTAMP_TAG" >> $GITHUB_ENV
           docker build -t springboot-demo:$SHORT_SHA \
                        -t springboot-demo:latest \
                        -t springboot-demo:$TIMESTAMP_TAG .
 
       # 1️⃣1️⃣ Scan Docker image with Trivy immediately after build
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.32.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
-          image-ref: springboot-demo:${{ env.SHORT_SHA }}  # Use GitHub Actions env variable
+          image-ref: springboot-demo:${{ env.SHORT_SHA }}  # use exported env variable
           format: table
           exit-code: 1
           severity: CRITICAL,HIGH
@@ -97,11 +99,9 @@ jobs:
       - name: Push Docker image
         if: ${{ github.event.inputs.docker != 'false' }}
         run: |
-          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
-          TIMESTAMP_TAG=${{ steps.timestamp.outputs.docker_tag }}
-          docker tag springboot-demo:$SHORT_SHA ghcr.io/learnwithprayag/springboot-demo:$SHORT_SHA
+          docker tag springboot-demo:${{ env.SHORT_SHA }} ghcr.io/learnwithprayag/springboot-demo:${{ env.SHORT_SHA }}
           docker tag springboot-demo:latest ghcr.io/learnwithprayag/springboot-demo:latest
-          docker tag springboot-demo:$TIMESTAMP_TAG ghcr.io/learnwithprayag/springboot-demo:$TIMESTAMP_TAG
-          docker push ghcr.io/learnwithprayag/springboot-demo:$SHORT_SHA
+          docker tag springboot-demo:${{ env.TIMESTAMP_TAG }} ghcr.io/learnwithprayag/springboot-demo:${{ env.TIMESTAMP_TAG }}
+          docker push ghcr.io/learnwithprayag/springboot-demo:${{ env.SHORT_SHA }}
           docker push ghcr.io/learnwithprayag/springboot-demo:latest
-          docker push ghcr.io/learnwithprayag/springboot-demo:$TIMESTAMP_TAG
+          docker push ghcr.io/learnwithprayag/springboot-demo:${{ env.TIMESTAMP_TAG }}
