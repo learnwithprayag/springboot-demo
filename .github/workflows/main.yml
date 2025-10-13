@@ -40,7 +40,7 @@ jobs:
           </settings>
           EOF
 
-      - name: Check if JAR version exists
+      - name: Check if Maven artifact version exists
         id: check_package
         run: |
           RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -48,13 +48,10 @@ jobs:
             https://api.github.com/users/learnwithprayag/packages/maven/springboot-demo/versions)
 
           PACKAGE_EXISTS=$(echo "$RESPONSE" | jq -r --arg VERSION "$GITHUB_PACKAGE_VERSION" '
-            if type=="array" then
-              .[] | select(.name==$VERSION) | .name
-            else
-              empty
-            end
+            .[] | select(.metadata.container.tags[]? == $VERSION) | .name
           ')
 
+          echo "DEBUG: PACKAGE_EXISTS=$PACKAGE_EXISTS"
           echo "package_exists=$PACKAGE_EXISTS" >> $GITHUB_OUTPUT
 
       - name: Set Maven version dynamically
