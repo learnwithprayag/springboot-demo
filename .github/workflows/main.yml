@@ -10,10 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.MAVEN_DEPLOY_TOKEN }}  # Your PAT for Maven deploy
+      GITHUB_PACKAGE_VERSION: 2.0.0                     # Set artifact version here
     steps:
+      # 1️⃣ Checkout repo
       - name: Checkout repo
         uses: actions/checkout@v3
 
+      # 2️⃣ Set up Java and cache Maven
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
@@ -21,6 +24,7 @@ jobs:
           java-version: 17
           cache: maven
 
+      # 3️⃣ Configure Maven settings for GitHub Packages
       - name: Configure Maven settings
         run: |
           mkdir -p ~/.m2
@@ -39,38 +43,57 @@ jobs:
           </settings>
           EOF
 
-      - name: Generate timestamp for Maven version
-        id: timestamp
+      # 4️⃣ Check if Maven artifact version already exists
+      - name: Check if Maven artifact version exists
+        id: check_package
         run: |
-          DATE_VERSION=$(date +%Y%m%d%H%M%S)
-          echo "timestamp_version=$DATE_VERSION" >> $GITHUB_OUTPUT
+          RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/users/learnwithprayag/packages/maven/springboot-demo/versions)
 
+          # Default to empty
+          PACKAGE_EXISTS=""
+
+          # Only parse if RESPONSE is a JSON array
+          if echo "$RESPONSE" | jq type | grep -q '"array"'; then
+            PACKAGE_EXISTS=$(echo "$RESPONSE" | jq -r --arg VERSION "$GITHUB_PACKAGE_VERSION" '
+              .[] | select(.name==$VERSION) | .name
+            ')
+          fi
+
+          echo "DEBUG: PACKAGE_EXISTS=$PACKAGE_EXISTS"
+          echo "package_exists=$PACKAGE_EXISTS" >> $GITHUB_OUTPUT
+
+      # 5️⃣ Set Maven version dynamically if not exists
       - name: Set Maven version dynamically
-        run: mvn versions:set -DnewVersion=${{ steps.timestamp.outputs.timestamp_version }} -DgenerateBackupPoms=false
+        if: steps.check_package.outputs.package_exists == ''
+        run: mvn versions:set -DnewVersion=${GITHUB_PACKAGE_VERSION} -DgenerateBackupPoms=false
 
+      # 6️⃣ Build JAR
       - name: Build JAR
         run: mvn clean package
 
+      # 7️⃣ Rename JAR to fixed name for Docker
+      - name: Rename JAR for Docker
+        run: mv target/springboot-demo-*.jar target/app.jar
+
+      # 8️⃣ Deploy to GitHub Packages (only if new version)
       - name: Deploy to GitHub Packages
+        if: steps.check_package.outputs.package_exists == ''
         run: mvn deploy -s ~/.m2/settings.xml
 
+      # 9️⃣ Log in to GitHub Container Registry (Docker)
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u learnwithprayag --password-stdin
 
-      - name: Set Docker tags
-        id: docker_tags
-        run: |
-          SHORT_SHA=$(git rev-parse --short HEAD)
-          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
-          echo "DOCKER_TAG_SHA=$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "DOCKER_TAG_LATEST=latest" >> $GITHUB_OUTPUT
-
+      # 🔟 Build Docker image using short commit SHA and latest
       - name: Build Docker image
         run: |
-          docker build -t ghcr.io/learnwithprayag/springboot-demo:${{ steps.docker_tags.outputs.DOCKER_TAG_SHA }} \
+          docker build -t ghcr.io/learnwithprayag/springboot-demo:${GITHUB_SHA::7} \
                        -t ghcr.io/learnwithprayag/springboot-demo:latest .
 
+      # 1️⃣1️⃣ Push Docker image
       - name: Push Docker image
         run: |
-          docker push ghcr.io/learnwithprayag/springboot-demo:${{ steps.docker_tags.outputs.DOCKER_TAG_SHA }}
+          docker push ghcr.io/learnwithprayag/springboot-demo:${GITHUB_SHA::7}
           docker push ghcr.io/learnwithprayag/springboot-demo:latest
