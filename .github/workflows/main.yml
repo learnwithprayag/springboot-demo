@@ -49,7 +49,7 @@ jobs:
           TIMESTAMP_VERSION=$(date +%Y%m%d%H%M%S)
           MAVEN_VERSION="2.0.0-$TIMESTAMP_VERSION"
           echo "maven_version=$MAVEN_VERSION" >> $GITHUB_OUTPUT
-          echo "Docker_tag=$TIMESTAMP_VERSION" >> $GITHUB_OUTPUT
+          echo "docker_tag=$TIMESTAMP_VERSION" >> $GITHUB_OUTPUT
           echo "Maven timestamp version: $MAVEN_VERSION"
 
       # Set Maven version dynamically
@@ -79,27 +79,26 @@ jobs:
         if: ${{ github.event.inputs.docker != 'false' }}
         run: |
           SHORT_SHA=${GITHUB_SHA::7}
-          TIMESTAMP_TAG=${{ steps.timestamp.outputs.Docker_tag }}
+          TIMESTAMP_TAG=${{ steps.timestamp.outputs.docker_tag }}
           docker build -t ghcr.io/learnwithprayag/springboot-demo:$SHORT_SHA \
                        -t ghcr.io/learnwithprayag/springboot-demo:latest \
                        -t ghcr.io/learnwithprayag/springboot-demo:$TIMESTAMP_TAG .
 
+      # Run Trivy vulnerability scanner on the short SHA image
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@v0.33.1
+        uses: aquasecurity/trivy-action@0.33.1
         with:
-          image-ref: 'ghcr.io/learnwithprayag/springboot-demo:${{ github.sha }}'
+          image-ref: "ghcr.io/learnwithprayag/springboot-demo:${GITHUB_SHA::7}"
           format: 'table'
           exit-code: 1
           severity: 'CRITICAL,HIGH'
-
-
 
       # Push Docker image
       - name: Push Docker image
         if: ${{ github.event.inputs.docker != 'false' }}
         run: |
           SHORT_SHA=${GITHUB_SHA::7}
-          TIMESTAMP_TAG=${{ steps.timestamp.outputs.Docker_tag }}
+          TIMESTAMP_TAG=${{ steps.timestamp.outputs.docker_tag }}
           docker push ghcr.io/learnwithprayag/springboot-demo:$SHORT_SHA
           docker push ghcr.io/learnwithprayag/springboot-demo:latest
           docker push ghcr.io/learnwithprayag/springboot-demo:$TIMESTAMP_TAG
