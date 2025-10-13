@@ -9,7 +9,8 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     env:
-      GITHUB_TOKEN: ${{ secrets.MAVEN_DEPLOY_TOKEN }}  # <-- your PAT secret
+      GITHUB_TOKEN: ${{ secrets.MAVEN_DEPLOY_TOKEN }}  # Your PAT for Maven deploy
+      GITHUB_PACKAGE_VERSION: 2.0.0                     # Set your artifact version here
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -23,7 +24,6 @@ jobs:
 
       - name: Configure Maven settings
         run: |
-          echo $GITHUB_TOKEN
           mkdir -p ~/.m2
           cat > ~/.m2/settings.xml <<EOF
           <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
@@ -43,7 +43,17 @@ jobs:
       - name: Build JAR
         run: mvn clean package
 
+      - name: Check if JAR version exists
+        id: check_package
+        run: |
+          PACKAGE_EXISTS=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/users/learnwithprayag/packages/maven/springboot-demo/versions \
+            | jq -r --arg VERSION "$GITHUB_PACKAGE_VERSION" '.[] | select(.name==$VERSION) | .name')
+          echo "package_exists=$PACKAGE_EXISTS" >> $GITHUB_OUTPUT
+
       - name: Deploy to GitHub Packages
+        if: steps.check_package.outputs.package_exists == ''
         run: mvn deploy -s ~/.m2/settings.xml
 
       - name: Log in to GHCR
