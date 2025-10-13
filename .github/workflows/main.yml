@@ -69,7 +69,7 @@ jobs:
         if: ${{ github.event.inputs.maven != 'false' }}
         run: mvn deploy -s ~/.m2/settings.xml
 
-      # 9️⃣ Log in to GitHub Container Registry
+      # 9️⃣ Log in to Docker (GHCR)
       - name: Log in to GHCR
         if: ${{ github.event.inputs.docker != 'false' }}
         run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u learnwithprayag --password-stdin
@@ -78,26 +78,26 @@ jobs:
       - name: Build Docker image
         if: ${{ github.event.inputs.docker != 'false' }}
         run: |
-          SHORT_SHA=${GITHUB_SHA::7}
+          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
           TIMESTAMP_TAG=${{ steps.timestamp.outputs.docker_tag }}
           docker build -t springboot-demo:$SHORT_SHA \
                        -t springboot-demo:latest \
                        -t springboot-demo:$TIMESTAMP_TAG .
 
-      # 1️⃣1️⃣ Run Trivy vulnerability scanner on local image
+      # 1️⃣1️⃣ Scan Docker image with Trivy immediately after build
       - name: Run Trivy vulnerability scanner
-        if: ${{ github.event.inputs.docker != 'false' }}
-        run: |
-          SHORT_SHA=${GITHUB_SHA::7}
-          # Use the local image built above
-          docker tag springboot-demo:$SHORT_SHA springboot-demo:trivy-scan
-          trivy image springboot-demo:trivy-scan --format table --exit-code 1 --severity CRITICAL,HIGH
+        uses: aquasecurity/trivy-action@0.32.0
+        with:
+          image-ref: springboot-demo:$SHORT_SHA  # Scan local image tag
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
 
       # 1️⃣2️⃣ Push Docker image
       - name: Push Docker image
         if: ${{ github.event.inputs.docker != 'false' }}
         run: |
-          SHORT_SHA=${GITHUB_SHA::7}
+          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
           TIMESTAMP_TAG=${{ steps.timestamp.outputs.docker_tag }}
           docker tag springboot-demo:$SHORT_SHA ghcr.io/learnwithprayag/springboot-demo:$SHORT_SHA
           docker tag springboot-demo:latest ghcr.io/learnwithprayag/springboot-demo:latest
