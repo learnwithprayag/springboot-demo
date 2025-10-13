@@ -1,4 +1,4 @@
-# SrpingBoot Application Demo
+# SpringBoot Application Demo
 
 Steps we’ll cover:
 
