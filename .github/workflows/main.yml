@@ -1,15 +1,23 @@
 name: CI/CD Spring Boot
 
+# Manual trigger for releases
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Optional semantic version (e.g., 2.0.0). If empty, timestamp will be used'
+        required: false
+        default: ''
+      docker:
+        description: 'Push Docker image? (true/false)'
+        required: false
+        default: 'true'
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     env:
-      GITHUB_TOKEN: ${{ secrets.MAVEN_DEPLOY_TOKEN }}  # Your PAT for Maven deploy
+      GITHUB_TOKEN: ${{ secrets.MAVEN_DEPLOY_TOKEN }}  # PAT for Maven deploy
     steps:
       # Checkout repo
       - name: Checkout repo
@@ -42,18 +50,22 @@ jobs:
           </settings>
           EOF
 
-      # Generate timestamp version
-      - name: Generate timestamp version
-        id: timestamp
+      # Determine Maven version
+      - name: Determine Maven version
+        id: maven_version
         run: |
-          TIMESTAMP_VERSION=$(date +%Y%m%d%H%M%S)
-          MAVEN_VERSION="2.0.0-$TIMESTAMP_VERSION"
+          if [ -z "${{ github.event.inputs.version }}" ]; then
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            MAVEN_VERSION="2.0.0-$TIMESTAMP"
+          else
+            MAVEN_VERSION="${{ github.event.inputs.version }}"
+          fi
           echo "maven_version=$MAVEN_VERSION" >> $GITHUB_OUTPUT
-          echo "Maven timestamp version: $MAVEN_VERSION"
+          echo "Using Maven version: $MAVEN_VERSION"
 
       # Set Maven version dynamically
       - name: Set Maven version dynamically
-        run: mvn versions:set -DnewVersion=${{ steps.timestamp.outputs.maven_version }} -DgenerateBackupPoms=false
+        run: mvn versions:set -DnewVersion=${{ steps.maven_version.outputs.maven_version }} -DgenerateBackupPoms=false
 
       # Build JAR
       - name: Build JAR
@@ -63,22 +75,23 @@ jobs:
       - name: Rename JAR for Docker
         run: mv target/springboot-demo-*.jar target/app.jar
 
-      # Deploy to GitHub Packages - check using https://github.com/orgs/learnwithprayag/packages
+      # Deploy JAR to GitHub Packages (manual)
       - name: Deploy to GitHub Packages
         run: mvn deploy -s ~/.m2/settings.xml
 
-      # Log in to GitHub Container Registry
-      - name: Log in to GHCR
-        run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u learnwithprayag --password-stdin
+      # Push Docker image (optional manual)
+      - name: Log in to GitHub Container Registry
+        if: ${{ github.event.inputs.docker == 'true' }}
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u learnwithprayag --password-stdin
 
-      # Build Docker image using short commit SHA and latest
       - name: Build Docker image
+        if: ${{ github.event.inputs.docker == 'true' }}
         run: |
           docker build -t ghcr.io/learnwithprayag/springboot-demo:${GITHUB_SHA::7} \
                        -t ghcr.io/learnwithprayag/springboot-demo:latest .
 
-      # Push Docker image
       - name: Push Docker image
+        if: ${{ github.event.inputs.docker == 'true' }}
         run: |
           docker push ghcr.io/learnwithprayag/springboot-demo:${GITHUB_SHA::7}
           docker push ghcr.io/learnwithprayag/springboot-demo:latest
