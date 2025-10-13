@@ -69,7 +69,7 @@ jobs:
 
       # 9️⃣ Log in to GitHub Container Registry
       - name: Log in to GHCR
-        run: echo "${{ GITHUB_TOKEN }}" | docker login ghcr.io -u learnwithprayag --password-stdin
+        run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u learnwithprayag --password-stdin
 
       # 🔟 Build Docker image using short commit SHA and latest
       - name: Build Docker image
