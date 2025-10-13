@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.MAVEN_DEPLOY_TOKEN }}  # Your PAT for Maven deploy
-      GITHUB_PACKAGE_VERSION: 2.0.0                     # Set your artifact version here
+      GITHUB_PACKAGE_VERSION: 2.0.0                    # Set your desired artifact version
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -43,19 +43,20 @@ jobs:
       - name: Check if Maven artifact version exists
         id: check_package
         run: |
+          echo "Checking if Maven artifact version exists on GitHub Packages..."
           RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/users/learnwithprayag/packages/maven/springboot-demo/versions)
 
-          # Default to empty
-          PACKAGE_EXISTS=""
+          echo "DEBUG: API RESPONSE=$RESPONSE"
 
-          # Only parse if RESPONSE is a JSON array
-          if echo "$RESPONSE" | jq type | grep -q '"array"'; then
-            PACKAGE_EXISTS=$(echo "$RESPONSE" | jq -r --arg VERSION "$GITHUB_PACKAGE_VERSION" '
+          PACKAGE_EXISTS=$(echo "$RESPONSE" | jq -r --arg VERSION "$GITHUB_PACKAGE_VERSION" '
+            if type=="array" then
               .[] | select(.name==$VERSION) | .name
-            ')
-          fi
+            else
+              empty
+            end
+          ')
 
           echo "DEBUG: PACKAGE_EXISTS=$PACKAGE_EXISTS"
           echo "package_exists=$PACKAGE_EXISTS" >> $GITHUB_OUTPUT
