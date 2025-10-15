@@ -68,23 +68,24 @@ jobs:
         run: |
           wget https://github.com/jeremylong/DependencyCheck/releases/download/v12.1.0/dependency-check-12.1.0-release.zip
           unzip dependency-check-12.1.0-release.zip -d $HOME/dependency-check
-          chmod +x $HOME/dependency-check/bin/dependency-check.sh
-          echo "$HOME/dependency-check/bin" >> $GITHUB_PATH
-
+          chmod +x $HOME/dependency-check/dependency-check-12.1.0/bin/dependency-check.sh
+          echo "$HOME/dependency-check/dependency-check-12.1.0/bin" >> $GITHUB_PATH
+      
       - name: Run OWASP Dependency-Check Scan
         run: |
           mkdir -p dependency-check-report
-          $HOME/dependency-check/bin/dependency-check.sh \
+          dependency-check.sh \
             --project "springboot-demo" \
             --scan . \
             --format "HTML" \
             --out "dependency-check-report"
-
+      
       - name: Upload Dependency Check Report
         uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
           path: dependency-check-report
+
 
 
       # -----------------------------
@@ -135,8 +136,8 @@ jobs:
       # -----------------------------
       # Deploy to GitHub Packages
       # -----------------------------
-      - name: Deploy Artifact
-        run: mvn deploy -s ~/.m2/settings.xml
+      #- name: Deploy Artifact
+      #  run: mvn deploy -s ~/.m2/settings.xml
 
       # -----------------------------
       # Container Build & Push
@@ -166,8 +167,8 @@ jobs:
       # -----------------------------
       # Push Docker Images
       # -----------------------------
-      - name: Push Docker images
-        run: |
-          docker push ghcr.io/learnwithprayag/springboot-demo:${{ env.SHORT_SHA }}
-          docker push ghcr.io/learnwithprayag/springboot-demo:latest
-          docker push ghcr.io/learnwithprayag/springboot-demo:${{ steps.timestamp.outputs.docker_tag }}
+      #- name: Push Docker images
+      #  run: |
+      #    docker push ghcr.io/learnwithprayag/springboot-demo:${{ env.SHORT_SHA }}
+      #    docker push ghcr.io/learnwithprayag/springboot-demo:latest
+      #    docker push ghcr.io/learnwithprayag/springboot-demo:${{ steps.timestamp.outputs.docker_tag }}
