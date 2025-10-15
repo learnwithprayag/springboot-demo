@@ -56,11 +56,28 @@ jobs:
       # -----------------------------
       # Snyk Dependency Scan
       # -----------------------------
-      - name: Install Snyk
-        run: npm install -g snyk
+      #- name: Install Snyk
+      #  run: npm install -g snyk
 
-      - name: Upload scan results to Snyk (for UI visibility)
-        run: snyk monitor --all-projects
+      #- name: Upload scan results to Snyk (for UI visibility)
+      #  run: snyk monitor --all-projects
+      #  env:
+      #    SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          
+      # -----------------------------
+      # Snyk CLI (binary) scan
+      # -----------------------------
+      - name: Download Snyk CLI
+        run: |
+          wget -O snyk-linux https://github.com/snyk/cli/releases/download/v1.1294.3/snyk-linux
+          chmod +x snyk-linux
+          mv snyk-linux $HOME/snyk
+          echo "$HOME" >> $GITHUB_PATH
+      
+      - name: Run Snyk scan
+        run: |
+          snyk test --all-projects
+          snyk monitor --all-projects
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
@@ -77,12 +94,6 @@ jobs:
       - name: Run OWASP Dependency-Check Scan
         run: |
           mkdir -p dependency-check-report
-          #$HOME/dependency-check/dependency-check/bin/dependency-check.sh \
-          #  --project "springboot-demo" \
-          #  --scan . \
-          #  --format "HTML" \
-          #  --out "dependency-check-report" \
-          #  --disableCentral
           $HOME/dependency-check/dependency-check/bin/dependency-check.sh  \
           --project "springboot-demo" \
           --scan . \
@@ -91,15 +102,12 @@ jobs:
           --nvdApiKey ${{ secrets.NVD_API_KEY }} \
           --ossIndexUser ${{ secrets.OSSINDEX_USERNAME }} \
           --ossIndexPassword ${{ secrets.OSSINDEX_PASSWORD }}
-
       
       - name: Upload Dependency Check Report
         uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
           path: dependency-check-report
-
-
 
       # -----------------------------
       # Configure Maven settings
