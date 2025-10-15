@@ -26,7 +26,13 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-          cache: maven
+          cache: none
+          
+      - name: Clear old Maven cache
+        run: |
+          rm -rf ~/.m2/repository/org/springframework
+          rm -rf ~/.m2/repository/org/apache/tomcat
+
 
       # Secret Scanning (TruffleHog)
       - name: Scan for hardcoded secrets
