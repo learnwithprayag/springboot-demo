@@ -11,6 +11,9 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.MAVEN_DEPLOY_TOKEN }}
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      # NVD_API_KEY
+      # OSSINDEX_USERNAME
+      # OSSINDEX_PASSWORD      
 
     steps:
       # -----------------------------
@@ -80,7 +83,7 @@ jobs:
           #  --format "HTML" \
           #  --out "dependency-check-report" \
           #  --disableCentral
-          $HOME/dependency-check.sh \
+          $HOME/dependency-check/dependency-check/bin/dependency-check.sh  \
           --project "springboot-demo" \
           --scan . \
           --format HTML \
