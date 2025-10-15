@@ -62,25 +62,24 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       # -----------------------------
-      # OWASP Dependency-Check
+      # OWASP Dependency-Check CLI
       # -----------------------------
-           # OWASP Dependency Check (CLI-based)
-      - name: Install OWASP Dependency Check
+      - name: Install OWASP Dependency-Check CLI
         run: |
-          wget https://github.com/jeremylong/DependencyCheck/releases/latest/download/dependency-check.zip
-          unzip dependency-check.zip -d $HOME/dependency-check
-          export PATH=$PATH:$HOME/dependency-check/bin
-          dependency-check.sh --version
+          wget https://github.com/jeremylong/DependencyCheck/releases/download/v12.1.0/dependency-check-12.1.0-release.zip
+          unzip dependency-check-12.1.0-release.zip -d $HOME/dependency-check
+          chmod +x $HOME/dependency-check/bin/dependency-check.sh
+          echo "$HOME/dependency-check/bin" >> $GITHUB_PATH
 
-      - name: Run OWASP Dependency Check Scan
+      - name: Run OWASP Dependency-Check Scan
         run: |
           mkdir -p dependency-check-report
-          dependency-check.sh \
+          $HOME/dependency-check/bin/dependency-check.sh \
             --project "springboot-demo" \
-            --scan "." \
+            --scan . \
             --format "HTML" \
             --out "dependency-check-report"
-      
+
       - name: Upload Dependency Check Report
         uses: actions/upload-artifact@v4
         with:
