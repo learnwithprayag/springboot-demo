@@ -68,13 +68,13 @@ jobs:
         run: |
           wget https://github.com/jeremylong/DependencyCheck/releases/download/v12.1.0/dependency-check-12.1.0-release.zip
           unzip dependency-check-12.1.0-release.zip -d $HOME/dependency-check
-          chmod +x $HOME/dependency-check/bin/dependency-check.sh
-          echo "$HOME/dependency-check/bin" >> $GITHUB_PATH
+          chmod +x $HOME/dependency-check/dependency-check/bin/dependency-check.sh
+          echo "$HOME/dependency-check/dependency-check/bin" >> $GITHUB_PATH
       
       - name: Run OWASP Dependency-Check Scan
         run: |
           mkdir -p dependency-check-report
-          $HOME/dependency-check/bin/dependency-check.sh \
+          $HOME/dependency-check/dependency-check/bin/dependency-check.sh \
             --project "springboot-demo" \
             --scan . \
             --format "HTML" \
@@ -86,6 +86,7 @@ jobs:
         with:
           name: dependency-check-report
           path: dependency-check-report
+
 
 
       # -----------------------------
