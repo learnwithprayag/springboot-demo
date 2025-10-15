@@ -11,19 +11,19 @@
     <packaging>jar</packaging>
 
     <name>springboot-demo</name>
-    <description>Spring Boot app for GitHub Packages</description>
+    <description>Spring Boot demo application</description>
 
     <!-- Updated Spring Boot parent version -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.11</version>  <!-- Fixes Spring Boot CVEs -->
+        <version>3.3.11</version> <!-- Fixes Spring Boot CVEs -->
         <relativePath/>
     </parent>
 
     <properties>
         <java.version>17</java.version>
-        <!-- Override Tomcat version to patched release -->
+        <!-- Override Tomcat version to latest patched release -->
         <tomcat.version>10.1.44</tomcat.version>
     </properties>
 
@@ -40,6 +40,7 @@
             <artifactId>spring-core</artifactId>
             <version>6.2.11</version>
         </dependency>
+
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-webmvc</artifactId>
@@ -47,24 +48,9 @@
         </dependency>
     </dependencies>
 
-    <repositories>
-        <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/learnwithprayag/springboot-demo</url>
-        </repository>
-    </repositories>
-
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/learnwithprayag/springboot-demo</url>
-        </repository>
-    </distributionManagement>
-
     <build>
         <plugins>
+            <!-- Spring Boot Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
