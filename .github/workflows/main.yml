@@ -64,24 +64,29 @@ jobs:
       # -----------------------------
       # OWASP Dependency-Check
       # -----------------------------
-      - name: Run OWASP Dependency-Check
-        uses: dependency-check/Dependency-Check_Action@v4.1.0
-        with:
-          project: "SpringBoot-Demo"
-          path: "."
-          format: "ALL"
-          out: "dependency-check-report"
-          args: >
-            --enableExperimental
-            --failOnCVSS 7
-        continue-on-error: true  # Optional: don't fail build on findings
+           # OWASP Dependency Check (CLI-based)
+      - name: Install OWASP Dependency Check
+        run: |
+          wget https://github.com/jeremylong/DependencyCheck/releases/latest/download/dependency-check.zip
+          unzip dependency-check.zip -d $HOME/dependency-check
+          export PATH=$PATH:$HOME/dependency-check/bin
+          dependency-check.sh --version
 
-      # Upload Dependency-Check Report
-      - name: Upload OWASP Dependency-Check Report
+      - name: Run OWASP Dependency Check Scan
+        run: |
+          mkdir -p dependency-check-report
+          dependency-check.sh \
+            --project "springboot-demo" \
+            --scan "." \
+            --format "HTML" \
+            --out "dependency-check-report"
+      
+      - name: Upload Dependency Check Report
         uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
           path: dependency-check-report
+
 
       # -----------------------------
       # Configure Maven settings
