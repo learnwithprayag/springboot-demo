@@ -13,28 +13,27 @@
     <name>springboot-demo</name>
     <description>Spring Boot demo application</description>
 
-    <!-- Updated Spring Boot parent version -->
+    <!-- Spring Boot with patched CVEs -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.11</version> <!-- Fixes Spring Boot CVEs -->
+        <version>3.3.11</version> <!-- patched -->
         <relativePath/>
     </parent>
 
     <properties>
         <java.version>17</java.version>
-        <!-- Override Tomcat version to latest patched release -->
-        <tomcat.version>10.1.44</tomcat.version>
+        <tomcat.version>10.1.44</tomcat.version> <!-- patched -->
     </properties>
 
     <dependencies>
-        <!-- Web starter includes Tomcat (patched version will apply) -->
+        <!-- Web starter with embedded Tomcat -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Explicitly patch core Spring libs -->
+        <!-- Patch core Spring libraries -->
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-core</artifactId>
@@ -46,16 +45,22 @@
             <artifactId>spring-webmvc</artifactId>
             <version>6.1.14</version>
         </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <!-- Spring Boot Plugin -->
+            <!-- Spring Boot plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
-
 </project>
