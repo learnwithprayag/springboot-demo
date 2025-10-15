@@ -1,0 +1,107 @@
+name: CI/CD Spring Boot
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.MAVEN_DEPLOY_TOKEN }}  # Your PAT for Maven deploy
+    steps:
+      # Checkout repo
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      # Set up Java and cache Maven
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      # Configure Maven settings for GitHub Packages
+      - name: Configure Maven settings
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                                        https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>github</id>
+                <username>learnwithprayag</username>
+                <password>\${env.GITHUB_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
+      # Generate timestamp version
+      - name: Generate timestamp version
+        id: timestamp
+        run: |
+          TIMESTAMP_VERSION=$(date +%Y%m%d%H%M%S)
+          MAVEN_VERSION="2.0.0-$TIMESTAMP_VERSION"
+          echo "maven_version=$MAVEN_VERSION" >> $GITHUB_OUTPUT
+          echo "docker_tag=$TIMESTAMP_VERSION" >> $GITHUB_OUTPUT
+          echo "Maven timestamp version: $MAVEN_VERSION"
+
+      # Set Maven version dynamically
+      - name: Set Maven version dynamically
+        run: mvn versions:set -DnewVersion=${{ steps.timestamp.outputs.maven_version }} -DgenerateBackupPoms=false
+
+      # Build JAR
+      - name: Build JAR
+        run: mvn clean package
+
+      # Rename JAR for Docker
+      - name: Rename JAR for Docker
+        run: mv target/springboot-demo-*.jar target/app.jar
+
+      # Deploy to GitHub Packages
+      - name: Deploy to GitHub Packages
+        if: ${{ github.event.inputs.maven != 'false' }}
+        run: mvn deploy -s ~/.m2/settings.xml
+
+      # Log in to Docker (GHCR)
+      - name: Log in to GHCR
+        if: ${{ github.event.inputs.docker != 'false' }}
+        run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u learnwithprayag --password-stdin
+
+      # Build Docker image with timestamp tag and short SHA, and export SHORT_SHA
+      - name: Build Docker image
+        if: ${{ github.event.inputs.docker != 'false' }}
+        run: |
+          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV    # export to other steps
+          TIMESTAMP_TAG=${{ steps.timestamp.outputs.docker_tag }}
+          echo "TIMESTAMP_TAG=$TIMESTAMP_TAG" >> $GITHUB_ENV
+          docker build -t springboot-demo:$SHORT_SHA \
+                       -t springboot-demo:latest \
+                       -t springboot-demo:$TIMESTAMP_TAG .
+
+      # Scan Docker image with Trivy immediately after build
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: springboot-demo:${{ env.SHORT_SHA }}  # use exported env variable
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+
+      # Push Docker image
+      - name: Push Docker image
+        if: ${{ github.event.inputs.docker != 'false' }}
+        run: |
+          docker tag springboot-demo:${{ env.SHORT_SHA }} ghcr.io/learnwithprayag/springboot-demo:${{ env.SHORT_SHA }}
+          docker tag springboot-demo:latest ghcr.io/learnwithprayag/springboot-demo:latest
+          docker tag springboot-demo:${{ env.TIMESTAMP_TAG }} ghcr.io/learnwithprayag/springboot-demo:${{ env.TIMESTAMP_TAG }}
+          docker push ghcr.io/learnwithprayag/springboot-demo:${{ env.SHORT_SHA }}
+          docker push ghcr.io/learnwithprayag/springboot-demo:latest
+          docker push ghcr.io/learnwithprayag/springboot-demo:${{ env.TIMESTAMP_TAG }}
