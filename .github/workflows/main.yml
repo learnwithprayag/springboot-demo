@@ -27,7 +27,7 @@ jobs:
 
       # Pre-Build Security: Secret Scanning
       - name: Scan for hardcoded secrets
-        uses: trufflesecurity/trufflehog@v3
+        uses: trufflesecurity/trufflehog@v3.90.0
         with:
           path: .
 
