@@ -43,33 +43,15 @@ jobs:
       # -----------------------------
       # Static Code Analysis (SonarQube / SonarCloud)
       # -----------------------------
-      #- name: Run SonarQube Analysis
-      #  uses: sonarsource/sonarqube-scan-action@v2
-      #  with:
-      #    projectBaseDir: .
-      #    args: >
-      #      -Dsonar.projectKey=learnwithprayag_springboot-demo
-      #      -Dsonar.organization=learnwithprayag
-      #      -Dsonar.host.url=https://sonarcloud.io
-      #      -Dsonar.login=${{ secrets.SONAR_TOKEN }}
-
-      - name: Download SonarScanner CLI
-        run: |
-          wget https://github.com/SonarSource/sonar-scanner-cli/archive/refs/tags/7.3.0.5189.zip
-          unzip 7.3.0.5189.zip
-          chmod +x sonar-scanner-cli-7.3.0.5189-linux/bin/sonar-scanner
-          mv sonar-scanner-cli-7.3.0.5189-linux/bin/sonar-scanner $HOME/sonar-scanner
-          echo "$HOME" >> $GITHUB_PATH
-      
-      - name: Run SonarScanner Analysis
-        run: |
-          sonar-scanner \
-            -Dsonar.projectKey=learnwithprayag_springboot-demo \
-            -Dsonar.organization=learnwithprayag \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.sources=. \
-            -Dsonar.java.binaries=target            
+      - name: Run SonarQube Analysis
+        uses: sonarsource/sonarqube-scan-action@v2
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.projectKey=learnwithprayag_springboot-demo
+            -Dsonar.organization=learnwithprayag
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}        
 
       # -----------------------------
       # Snyk Dependency Scan
