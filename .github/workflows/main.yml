@@ -2,7 +2,7 @@ name: CI/CD Spring Boot Secure Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [main1]
 
 jobs:
   build-and-publish:
@@ -74,12 +74,21 @@ jobs:
       - name: Run OWASP Dependency-Check Scan
         run: |
           mkdir -p dependency-check-report
-          $HOME/dependency-check/dependency-check/bin/dependency-check.sh \
-            --project "springboot-demo" \
-            --scan . \
-            --format "HTML" \
-            --out "dependency-check-report" \
-            --disableCentral
+          #$HOME/dependency-check/dependency-check/bin/dependency-check.sh \
+          #  --project "springboot-demo" \
+          #  --scan . \
+          #  --format "HTML" \
+          #  --out "dependency-check-report" \
+          #  --disableCentral
+          $HOME/dependency-check.sh \
+          --project "springboot-demo" \
+          --scan . \
+          --format HTML \
+          --out dependency-check-report \
+          --nvdApiKey ${{ secrets.NVD_API_KEY }} \
+          --ossIndexUser ${{ secrets.OSSINDEX_USERNAME }} \
+          --ossIndexPassword ${{ secrets.OSSINDEX_PASSWORD }}
+
       
       - name: Upload Dependency Check Report
         uses: actions/upload-artifact@v4
