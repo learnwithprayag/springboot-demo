@@ -13,11 +13,15 @@ jobs:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
     steps:
+      # -----------------------------
       # Checkout Code
+      # -----------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # -----------------------------
       # Set up Java and cache Maven
+      # -----------------------------
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -25,13 +29,17 @@ jobs:
           java-version: 17
           cache: maven
 
-      # Pre-Build Security: Secret Scanning
+      # -----------------------------
+      # Secret Scanning (TruffleHog)
+      # -----------------------------
       - name: Scan for hardcoded secrets
         uses: trufflesecurity/trufflehog@v3.90.0
         with:
           path: .
 
-      # Static Code Analysis (SonarQube / CodeQL)
+      # -----------------------------
+      # Static Code Analysis (SonarQube / SonarCloud)
+      # -----------------------------
       - name: Run SonarQube Analysis
         uses: sonarsource/sonarqube-scan-action@v2
         with:
@@ -42,19 +50,42 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
-      # SCA / Dependency Scan
-      # Install Snyk CLI
+      # -----------------------------
+      # Snyk Dependency Scan
+      # -----------------------------
       - name: Install Snyk
         run: npm install -g snyk
-      
-      # Run dependency scan
+
       - name: Upload scan results to Snyk (for UI visibility)
         run: snyk monitor --all-projects
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
+      # -----------------------------
+      # OWASP Dependency-Check
+      # -----------------------------
+      - name: Run OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@v4.1.0
+        with:
+          project: "SpringBoot-Demo"
+          path: "."
+          format: "ALL"
+          out: "dependency-check-report"
+          args: >
+            --enableExperimental
+            --failOnCVSS 7
+        continue-on-error: true  # Optional: don't fail build on findings
 
-      # Configure Maven settings for GitHub Packages
+      # Upload Dependency-Check Report
+      - name: Upload OWASP Dependency-Check Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: dependency-check-report
+
+      # -----------------------------
+      # Configure Maven settings
+      # -----------------------------
       - name: Configure Maven settings
         run: |
           mkdir -p ~/.m2
@@ -70,7 +101,9 @@ jobs:
           </settings>
           EOF
 
+      # -----------------------------
       # Generate timestamp version
+      # -----------------------------
       - name: Generate timestamp version
         id: timestamp
         run: |
@@ -79,27 +112,34 @@ jobs:
           echo "maven_version=$MAVEN_VERSION" >> $GITHUB_OUTPUT
           echo "docker_tag=$TIMESTAMP_VERSION" >> $GITHUB_OUTPUT
 
-      # Set dynamic version
+      # -----------------------------
+      # Set Maven version dynamically
+      # -----------------------------
       - name: Set Maven version dynamically
         run: mvn versions:set -DnewVersion=${{ steps.timestamp.outputs.maven_version }} -DgenerateBackupPoms=false
 
-      # Build and Package Spring Boot App
+      # -----------------------------
+      # Build and Package
+      # -----------------------------
       - name: Build JAR
         run: mvn clean package -DskipTests=false
 
-      # Rename for Docker
+      # Rename JAR for Docker
       - name: Rename JAR for Docker
         run: mv target/*-SNAPSHOT.jar target/app.jar || mv target/*.jar target/app.jar
 
-      # Deploy to GitHub Packages (Artifact Registry)
+      # -----------------------------
+      # Deploy to GitHub Packages
+      # -----------------------------
       - name: Deploy Artifact
         run: mvn deploy -s ~/.m2/settings.xml
 
-      # Log in to GHCR
+      # -----------------------------
+      # Container Build & Push
+      # -----------------------------
       - name: Log in to GitHub Container Registry
         run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u learnwithprayag --password-stdin
 
-      # Build Docker image
       - name: Build Docker image
         run: |
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
@@ -108,7 +148,9 @@ jobs:
                        -t ghcr.io/learnwithprayag/springboot-demo:latest \
                        -t ghcr.io/learnwithprayag/springboot-demo:${{ steps.timestamp.outputs.docker_tag }} .
 
-      # Container Scan with Trivy
+      # -----------------------------
+      # Container Scan (Trivy)
+      # -----------------------------
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.33.1
         with:
@@ -117,13 +159,11 @@ jobs:
           exit-code: 1
           severity: CRITICAL,HIGH
 
-      # Push Docker Images to GHCR
+      # -----------------------------
+      # Push Docker Images
+      # -----------------------------
       - name: Push Docker images
         run: |
           docker push ghcr.io/learnwithprayag/springboot-demo:${{ env.SHORT_SHA }}
           docker push ghcr.io/learnwithprayag/springboot-demo:latest
           docker push ghcr.io/learnwithprayag/springboot-demo:${{ steps.timestamp.outputs.docker_tag }}
-
-
-
-          
