@@ -48,7 +48,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
           JAVA_HOME: /usr/lib/jvm/adoptopenjdk-17-hotspot
-        continue-on-error: true
+        # continue-on-error: true
 
       # Configure Maven settings for GitHub Packages
       - name: Configure Maven settings
@@ -120,16 +120,6 @@ jobs:
           docker push ghcr.io/learnwithprayag/springboot-demo:latest
           docker push ghcr.io/learnwithprayag/springboot-demo:${{ steps.timestamp.outputs.docker_tag }}
 
-      # Optional: Notify on Slack / Teams
-      - name: Notify Slack
-        if: always()
-        uses: slackapi/slack-github-action@v1.26.0
-        with:
-          payload: |
-            {
-              "text": "Spring Boot CI/CD Completed for commit ${{ github.sha }}"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
 
           
