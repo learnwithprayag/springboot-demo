@@ -43,12 +43,15 @@ jobs:
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
       # SCA / Dependency Scan
+      # Install Snyk CLI
+      - name: Install Snyk
+        run: npm install -g snyk
+      
+      # Run dependency scan
       - name: Snyk Dependency Scan
-        uses: snyk/actions/maven@master
+        run: snyk test --all-projects
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          JAVA_HOME: /usr/lib/jvm/adoptopenjdk-17-hotspot
-        # continue-on-error: true
 
       # Configure Maven settings for GitHub Packages
       - name: Configure Maven settings
