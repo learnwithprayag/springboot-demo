@@ -37,7 +37,7 @@ jobs:
         with:
           projectBaseDir: .
           args: >
-            -Dsonar.projectKey=springboot-demo
+            -Dsonar.projectKey=learnwithprayag_springboot-demo
             -Dsonar.organization=learnwithprayag
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
