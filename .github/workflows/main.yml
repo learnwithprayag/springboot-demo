@@ -2,7 +2,7 @@ name: CI/CD Spring Boot Secure Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [main1]
 
 jobs:
   build-and-publish:
@@ -38,7 +38,7 @@ jobs:
         with:
           path: .
 
-      # SonarQube Analysis
+      # SonarQube Analysis - SAST
       - name: Run SonarQube Analysis
         uses: sonarsource/sonarqube-scan-action@v2
         with:
@@ -49,7 +49,7 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}        
 
-      # Snyk Scan
+      # Snyk Scan - SCA
       - name: Download Snyk CLI
         run: |
           wget -O snyk-linux https://github.com/snyk/cli/releases/download/v1.1294.3/snyk-linux
@@ -63,12 +63,12 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       # OWASP Dependency-Check
-      - name: Install OWASP Dependency-Check CLI
-        run: |
-          wget https://github.com/jeremylong/DependencyCheck/releases/download/v12.1.0/dependency-check-12.1.0-release.zip
-          unzip dependency-check-12.1.0-release.zip -d $HOME/dependency-check
-          chmod +x $HOME/dependency-check/dependency-check/bin/dependency-check.sh
-          echo "$HOME/dependency-check/dependency-check/bin" >> $GITHUB_PATH
+      #- name: Install OWASP Dependency-Check CLI
+      #  run: |
+      #    wget https://github.com/jeremylong/DependencyCheck/releases/download/v12.1.0/dependency-check-12.1.0-release.zip
+      #    unzip dependency-check-12.1.0-release.zip -d $HOME/dependency-check
+      #    chmod +x $HOME/dependency-check/dependency-check/bin/dependency-check.sh
+      #    echo "$HOME/dependency-check/dependency-check/bin" >> $GITHUB_PATH
       
       #- name: Run OWASP Dependency-Check Scan
       #  run: |
@@ -109,7 +109,7 @@ jobs:
         with:
           image-ref: ghcr.io/learnwithprayag/springboot-demo:${{ env.SHORT_SHA }}
           format: table
-          exit-code: 0   # always pass
+          exit-code: 0    # always pass
           # exit-code: 1  # uncomment to demo fail
           severity: CRITICAL,HIGH
 
