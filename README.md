@@ -227,12 +227,6 @@ And in the `<repositories>` block:
 | 9    | Use artifact    | Add `<dependency>` + `<repository>` in POM              |
 
 ---
-Ah! That’s because **GitHub recently moved GHCR (GitHub Container Registry) packages out of the “Packages” tab for repos**. Now:
-
-* For **Docker/OCI images** pushed to GHCR, the **Packages tab in the repo UI will often be empty**.
-* GHCR images are visible in your **user or organization packages page**, not always directly in the repo.
-
----
 
 ### How to check the image
 
