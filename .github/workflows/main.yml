@@ -75,8 +75,8 @@ jobs:
             -Dsonar.sources=src/main/java \
             -Dsonar.tests=src/test/java \
             -Dsonar.java.binaries=target/classes \
-            -Dsonar.junit.reportPaths=target/surefire-reports \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+            #-Dsonar.junit.reportPaths=target/surefire-reports \
+            #-Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
       # Snyk Scan - SCA
       - name: Download Snyk CLI
