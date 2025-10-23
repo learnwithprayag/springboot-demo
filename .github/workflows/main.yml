@@ -39,44 +39,15 @@ jobs:
           path: .
 
       # SonarQube Analysis - SAST
-      #- name: Run SonarQube Analysis
-      #  uses: sonarsource/sonarqube-scan-action@v2
-      #  with:
-      #    projectBaseDir: .
-      #    args: >
-      #      -Dsonar.projectKey=learnwithprayag_springboot-demo
-      #      -Dsonar.organization=learnwithprayag
-      #      -Dsonar.host.url=https://sonarcloud.io
-      #      -Dsonar.login=${{ secrets.SONAR_TOKEN }}        
-      # Build, Test, and Sonar Analysis with JaCoCo + CLI Scanner
-      - name: Build, Test, and Analyze with SonarScanner
-        run: |
-          echo "Clean and compile code"
-          mvn clean compile
-
-          echo "Run unit and integration tests"
-          mvn verify
-
-          echo "Download SonarScanner CLI"
-          SONAR_SCANNER_VERSION=6.2.1.4610
-          wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux-x64.zip
-          unzip -q sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux-x64.zip
-          export PATH=$PATH:$(pwd)/sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64/bin
-
-          echo "Verify SonarScanner installation"
-          sonar-scanner --version
-
-          echo "Run SonarCloud analysis with JaCoCo report"
-          sonar-scanner \
-            -Dsonar.projectKey=springboot-demo \
-            -Dsonar.organization=rootpromptnext \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.sources=src/main/java \
-            -Dsonar.tests=src/test/java \
-            -Dsonar.java.binaries=target/classes \
-            #-Dsonar.junit.reportPaths=target/surefire-reports \
-            #-Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+      - name: Run SonarQube Analysis
+        uses: sonarsource/sonarqube-scan-action@v2
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.projectKey=learnwithprayag_springboot-demo
+            -Dsonar.organization=learnwithprayag
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}        
 
       # Snyk Scan - SCA
       - name: Download Snyk CLI
