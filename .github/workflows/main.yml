@@ -39,15 +39,43 @@ jobs:
           path: .
 
       # SonarQube Analysis - SAST
-      - name: Run SonarQube Analysis
-        uses: sonarsource/sonarqube-scan-action@v2
-        with:
-          projectBaseDir: .
-          args: >
-            -Dsonar.projectKey=learnwithprayag_springboot-demo
-            -Dsonar.organization=learnwithprayag
-            -Dsonar.host.url=https://sonarcloud.io
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }}        
+      #- name: Run SonarQube Analysis
+      #  uses: sonarsource/sonarqube-scan-action@v2
+      #  with:
+      #    projectBaseDir: .
+      #    args: >
+      #      -Dsonar.projectKey=learnwithprayag_springboot-demo
+      #      -Dsonar.organization=learnwithprayag
+      #      -Dsonar.host.url=https://sonarcloud.io
+      #      -Dsonar.login=${{ secrets.SONAR_TOKEN }}        
+
+      - name: Build & Test with JaCoCo
+        run: |
+          echo "Cleaning project and compiling..."
+          mvn clean compile
+          
+          echo "Running unit tests and generating JaCoCo coverage..."
+          mvn test
+
+          echo "Running integration + unit tests (if any)..."
+          mvn verify
+
+          echo "Build & Test complete. Coverage report available at target/site/jacoco/jacoco.xml"
+
+      - name: Run SonarScanner CLI
+        run: |
+          sonar-scanner \
+            -Dsonar.projectKey=springboot-demo \
+            -Dsonar.organization=rootpromptnext \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.sources=src/main/java \
+            -Dsonar.tests=src/test/java \
+            -Dsonar.java.binaries=target/classes \
+            -Dsonar.junit.reportPaths=target/surefire-reports \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+    
+
 
       # Snyk Scan - SCA
       - name: Download Snyk CLI
