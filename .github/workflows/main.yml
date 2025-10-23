@@ -48,22 +48,25 @@ jobs:
       #      -Dsonar.organization=learnwithprayag
       #      -Dsonar.host.url=https://sonarcloud.io
       #      -Dsonar.login=${{ secrets.SONAR_TOKEN }}        
-
-      - name: Build & Test with JaCoCo
+      # Build, Test, and Sonar Analysis with JaCoCo + CLI Scanner
+      - name: Build, Test, and Analyze with SonarScanner
         run: |
-          echo "Cleaning project and compiling..."
+          echo "Clean and compile code"
           mvn clean compile
-          
-          echo "Running unit tests and generating JaCoCo coverage..."
-          mvn test
 
-          echo "Running integration + unit tests (if any)..."
+          echo "Run unit and integration tests"
           mvn verify
 
-          echo "Build & Test complete. Coverage report available at target/site/jacoco/jacoco.xml"
+          echo "Download SonarScanner CLI"
+          SONAR_SCANNER_VERSION=6.2.1.4610
+          wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux-x64.zip
+          unzip -q sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux-x64.zip
+          export PATH=$PATH:$(pwd)/sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64/bin
 
-      - name: Run SonarScanner CLI
-        run: |
+          echo "Verify SonarScanner installation"
+          sonar-scanner --version
+
+          echo "Run SonarCloud analysis with JaCoCo report"
           sonar-scanner \
             -Dsonar.projectKey=springboot-demo \
             -Dsonar.organization=rootpromptnext \
@@ -74,8 +77,6 @@ jobs:
             -Dsonar.java.binaries=target/classes \
             -Dsonar.junit.reportPaths=target/surefire-reports \
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-    
-
 
       # Snyk Scan - SCA
       - name: Download Snyk CLI
